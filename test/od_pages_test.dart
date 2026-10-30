@@ -38,6 +38,16 @@ void main() {
     await _settle(tester, 300);
     expect(transport.od.debugMotor, 4);
 
+    // switching motors drops the target on both sides
+    await tester.drag(find.byType(Slider), const Offset(300, 0));
+    await _settle(tester, 300);
+    await tester.tap(find.text('左轮'));
+    await _settle(tester, 300);
+    expect(transport.od.debugTarget, 0);
+    expect(find.text('目标 0 rpm'), findsOneWidget);
+    await tester.tap(find.text('右轮'));
+    await _settle(tester, 300);
+
     await tester.drag(find.byType(Slider), const Offset(300, 0));
     await _settle(tester, 300);
     expect(transport.od.debugTarget, greaterThan(0));
@@ -49,6 +59,13 @@ void main() {
     expect(transport.od.debugRun, isTrue);
     expect(transport.od.motorSpeed[3], greaterThan(10));
     await hold.up();
+    await _settle(tester, 300);
+    expect(transport.od.debugRun, isFalse);
+
+    // a release still stops the motor when telemetry already showed it stopped
+    final quick = await tester.startGesture(tester.getCenter(find.text('按住运行')));
+    transport.od.debugRun = false; // as if a TPDO raced the run=1 write
+    await quick.up();
     await _settle(tester, 300);
     expect(transport.od.debugRun, isFalse);
 

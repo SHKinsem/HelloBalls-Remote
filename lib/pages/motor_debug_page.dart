@@ -29,6 +29,7 @@ class _MotorDebugPageState extends State<MotorDebugPage> {
   String? _error;
   bool _ready = false;
   bool _running = false;
+  bool _held = false;
 
   int _motor = 0;
   int _cap = 500;
@@ -136,6 +137,11 @@ class _MotorDebugPageState extends State<MotorDebugPage> {
     try {
       await _write(2, m);
       setState(() {
+        if (m != _motor) {
+          // the robot zeroes the target when the motor changes
+          _target = 0;
+          _sentTarget = 0;
+        }
         _motor = m;
         _history.clear();
       });
@@ -188,13 +194,16 @@ class _MotorDebugPageState extends State<MotorDebugPage> {
     }
   }
 
+  /// Follows the finger, not the telemetry: a release always sends run=0, even
+  /// when a TPDO already showed the motor stopped (the queued run=1 may still land).
   Future<void> _setRun(bool on) async {
-    if (on == _running) return;
+    if (on && _held) return;
+    _held = on;
     setState(() => _running = on);
     try {
       await _write(4, on);
     } catch (_) {
-      if (mounted) setState(() => _running = false);
+      if (mounted && on) setState(() => _running = false);
     }
   }
 
