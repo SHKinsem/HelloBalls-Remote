@@ -3,14 +3,19 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_reactive_ble/flutter_reactive_ble.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import '../od/od_protocol.dart';
+import 'health.dart';
 import 'protocol.dart';
 
 /// A robot found while scanning.
 class FoundRobot {
-  const FoundRobot(this.id, this.name, this.rssi);
+  const FoundRobot(this.id, this.name, this.rssi, [this.health]);
   final String id;
   final String name;
   final int rssi;
+
+  /// Boot stage and faults from the advertisement; null for firmware that does not send them.
+  final RobotHealth? health;
 }
 
 enum LinkState { disconnected, connecting, connected }
@@ -25,6 +30,12 @@ abstract class RobotTransport {
   Future<void> writeAction(List<int> frame);
   Stream<List<int>> statusStream();
   Future<String> readInfo();
+
+  // Object dictionary (firmware reports "od=1" in Info)
+  Future<int> requestMtu(int mtu);
+  Future<void> writeSdo(List<int> frame);
+  Stream<List<int>> sdoStream();
+  Stream<List<int>> tpdoStream();
 }
 
 class ReactiveBleTransport implements RobotTransport {
@@ -69,7 +80,8 @@ class ReactiveBleTransport implements RobotTransport {
   @override
   Stream<FoundRobot> scan() => _ble
       .scanForDevices(withServices: [serviceUuid], scanMode: ScanMode.lowLatency)
-      .map((d) => FoundRobot(d.id, d.name.isEmpty ? '未命名设备' : d.name, d.rssi));
+      .map((d) => FoundRobot(d.id, d.name.isEmpty ? '未命名设备' : d.name, d.rssi,
+          RobotHealth.fromManufacturerData(d.manufacturerData)));
 
   @override
   Stream<LinkState> connect(String id) {
@@ -80,7 +92,7 @@ class ReactiveBleTransport implements RobotTransport {
         .connectToDevice(
           id: id,
           servicesWithCharacteristicsToDiscover: {
-            serviceUuid: [controlUuid, actionUuid, statusUuid, infoUuid],
+            serviceUuid: [controlUuid, actionUuid, statusUuid, infoUuid, sdoUuid, tpdoUuid],
           },
           connectionTimeout: const Duration(seconds: 10),
         )
@@ -120,4 +132,16 @@ class ReactiveBleTransport implements RobotTransport {
 
   @override
   Future<String> readInfo() async => String.fromCharCodes(await _ble.readCharacteristic(_chr(infoUuid)));
+
+  @override
+  Future<int> requestMtu(int mtu) => _ble.requestMtu(deviceId: _deviceId!, mtu: mtu);
+
+  @override
+  Future<void> writeSdo(List<int> frame) => _ble.writeCharacteristicWithResponse(_chr(sdoUuid), value: frame);
+
+  @override
+  Stream<List<int>> sdoStream() => _ble.subscribeToCharacteristic(_chr(sdoUuid));
+
+  @override
+  Stream<List<int>> tpdoStream() => _ble.subscribeToCharacteristic(_chr(tpdoUuid));
 }

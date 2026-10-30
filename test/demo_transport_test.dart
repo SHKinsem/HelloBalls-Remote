@@ -34,4 +34,18 @@ void main() {
       async.flushMicrotasks();
     });
   });
+
+  test('disconnecting from the demo robot completes and stops its timers', () {
+    fakeAsync((async) {
+      final link = RobotLink(DemoTransport(), RemoteModel(RemoteSettings()));
+      link.connect(const FoundRobot('demo', 'demo', -40));
+      async.elapse(const Duration(seconds: 1));
+      var done = false;
+      link.disconnect().then((_) => done = true);
+      async.elapse(const Duration(seconds: 1));
+      expect(done, isTrue);
+      expect(async.periodicTimerCount, 0);
+      expect(link.state, LinkState.disconnected);
+    });
+  });
 }

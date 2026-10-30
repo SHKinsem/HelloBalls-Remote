@@ -8,6 +8,8 @@ import '../binding/remote_model.dart';
 import '../controls/joystick.dart';
 import '../controls/simple_controls.dart';
 import '../layout/control_spec.dart';
+import 'dictionary_page.dart';
+import 'motor_debug_page.dart';
 import 'settings_page.dart';
 
 /// The remote screen: every control module of the layout, placed by fraction.
@@ -89,6 +91,19 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
     );
   }
 
+  void _showHealth() {
+    final h = link.health;
+    if (h == null) return;
+    showDialog<void>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: Text('机器人状态：${h.stageText}'),
+        content: Text(link.healthReason ?? h.faultTexts.join('\n')),
+        actions: [TextButton(onPressed: () => Navigator.pop(c), child: const Text('知道了'))],
+      ),
+    );
+  }
+
   /// One slim row: disconnect, robot name, live status, settings and the
   /// emergency stop, which is always there whatever the layout says.
   Widget _buildHeader(BuildContext context) {
@@ -122,6 +137,28 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
           ),
         ),
         const Spacer(),
+        if (this.link.health?.hasProblem ?? false)
+          TextButton.icon(
+            style: TextButton.styleFrom(foregroundColor: theme.colorScheme.error),
+            icon: const Icon(Icons.warning_amber),
+            label: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 160),
+              child: Text(this.link.health!.summary, overflow: TextOverflow.ellipsis),
+            ),
+            onPressed: _showHealth,
+          ),
+        if (this.link.od != null) ...[
+          IconButton(
+            icon: const Icon(Icons.precision_manufacturing),
+            tooltip: '电机调试',
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => MotorDebugPage(link: this.link))),
+          ),
+          IconButton(
+            icon: const Icon(Icons.list_alt),
+            tooltip: '参数 / 对象字典',
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => DictionaryPage(link: this.link))),
+          ),
+        ],
         IconButton(
           icon: const Icon(Icons.tune),
           tooltip: '设置',

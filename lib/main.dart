@@ -6,6 +6,7 @@ import 'ble/robot_transport.dart';
 import 'binding/remote_model.dart';
 import 'binding/remote_settings.dart';
 import 'layout/control_spec.dart';
+import 'od/od_cache.dart';
 import 'pages/scan_page.dart';
 
 Future<void> main() async {
@@ -15,7 +16,7 @@ Future<void> main() async {
   final settings = RemoteSettings();
   await settings.load();
   final layout = await RemoteLayout.loadAsset();
-  final link = RobotLink(ReactiveBleTransport(), RemoteModel(settings));
+  final link = RobotLink(ReactiveBleTransport(), RemoteModel(settings), odCache: PrefsOdCache());
 
   runApp(HelloBallsRemoteApp(link: link, layout: layout));
 }
