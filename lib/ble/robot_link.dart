@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:clock/clock.dart';
 import 'package:flutter/foundation.dart';
 
 import '../binding/remote_model.dart';
@@ -27,12 +28,13 @@ class RobotLink extends ChangeNotifier {
   StreamSubscription<LinkState>? _stateSub;
   StreamSubscription<List<int>>? _statusSub;
   bool _writing = false;
+  bool _statusWasFresh = false;
 
   bool get connected => state == LinkState.connected;
 
   /// True when status frames keep arriving (robot alive and in range).
   bool get statusFresh =>
-      lastStatusAt != null && DateTime.now().difference(lastStatusAt!) < const Duration(seconds: 1);
+      lastStatusAt != null && clock.now().difference(lastStatusAt!) < const Duration(seconds: 1);
 
   Future<void> connect(FoundRobot robot) async {
     await disconnect();
@@ -52,7 +54,8 @@ class RobotLink extends ChangeNotifier {
         final st = StatusFrame.decode(data);
         if (st != null) {
           status = st;
-          lastStatusAt = DateTime.now();
+          lastStatusAt = clock.now();
+          _statusWasFresh = true;
           notifyListeners();
         }
       }, onError: (Object e) => error = '状态订阅失败：$e');
@@ -80,7 +83,14 @@ class RobotLink extends ChangeNotifier {
   }
 
   Future<void> _sendControl() async {
-    if (!connected || _writing) return; // skip a tick rather than queue stale frames
+    if (!connected) return;
+    // Status frames carry their own notify; their absence has to be noticed here
+    final fresh = statusFresh;
+    if (fresh != _statusWasFresh) {
+      _statusWasFresh = fresh;
+      notifyListeners();
+    }
+    if (_writing) return; // skip a tick rather than queue stale frames
     _writing = true;
     try {
       _seq = (_seq + 1) & 0xFF;
@@ -110,6 +120,7 @@ class RobotLink extends ChangeNotifier {
   }
 
   void _stop() {
+    _statusWasFresh = false;
     _ticker?.cancel();
     _ticker = null;
     _statusSub?.cancel();

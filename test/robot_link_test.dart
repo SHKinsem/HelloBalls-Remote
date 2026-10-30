@@ -90,6 +90,24 @@ void main() {
     });
   });
 
+  test('the screen is told when status frames stop arriving', () {
+    fakeAsync((async) {
+      var notifications = 0;
+      link.addListener(() => notifications++);
+      link.connect(const FoundRobot('AA', 'x', -50));
+      async.flushMicrotasks();
+      robot.linkStates.add(LinkState.connected);
+      async.flushMicrotasks();
+      robot.status.add(const StatusFrame(mcuState: 1).encode());
+      async.flushMicrotasks();
+      expect(link.statusFresh, isTrue);
+      final before = notifications;
+      async.elapse(const Duration(milliseconds: 1200)); // robot keeps the link but goes silent
+      expect(link.statusFresh, isFalse);
+      expect(notifications, before + 1);
+    });
+  });
+
   test('disconnect sends a stop frame without takeover and stops the loop', () {
     fakeAsync((async) {
       link.connect(const FoundRobot('AA', 'x', -50));
