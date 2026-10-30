@@ -31,6 +31,14 @@ class FakeRobot implements RobotTransport {
   Stream<List<int>> statusStream() => status.stream;
   @override
   Future<String> readInfo() async => 'proto=1;fw=test';
+  @override
+  Future<int> requestMtu(int mtu) async => mtu;
+  @override
+  Future<void> writeSdo(List<int> frame) async {}
+  @override
+  Stream<List<int>> sdoStream() => const Stream.empty();
+  @override
+  Stream<List<int>> tpdoStream() => const Stream.empty();
 }
 
 void main() {

@@ -4,16 +4,33 @@ import 'package:clock/clock.dart';
 import 'package:flutter/foundation.dart';
 
 import '../binding/remote_model.dart';
+import '../od/od_client.dart';
+import '../od/od_dictionary.dart';
+import '../od/od_protocol.dart';
+import 'health.dart';
 import 'protocol.dart';
 import 'robot_transport.dart';
 
 /// Owns the connection to one robot: sends the control frame at a fixed rate
 /// (it doubles as heartbeat) and exposes the latest status.
 class RobotLink extends ChangeNotifier {
-  RobotLink(this.transport, this.model);
+  RobotLink(this.transport, this.model, {OdCache? odCache}) : odCache = odCache ?? MemoryOdCache();
 
   final RobotTransport transport;
   final RemoteModel model;
+  final OdCache odCache;
+
+  /// Object dictionary client, when the firmware has one (Info says "od=1").
+  OdClient? od;
+  StreamSubscription<List<int>>? _sdoSub;
+  StreamSubscription<List<int>>? _tpdoSub;
+  Future<OdDictionary>? _dictionaryLoad;
+
+  /// Boot stage and faults: from the advertisement, then polled from 0x2001 while connected.
+  RobotHealth? health;
+  String? healthReason;
+  Timer? _healthTimer;
+  bool _healthBusy = false;
 
   LinkState state = LinkState.disconnected;
   StatusFrame? status;
@@ -39,6 +56,8 @@ class RobotLink extends ChangeNotifier {
   Future<void> connect(FoundRobot robot) async {
     await disconnect();
     robotName = robot.name;
+    health = robot.health;
+    healthReason = null;
     error = null;
     model.reset(); // never resume driving with stale stick values
     state = LinkState.connecting;
@@ -61,6 +80,7 @@ class RobotLink extends ChangeNotifier {
       }, onError: (Object e) => error = '状态订阅失败：$e');
       transport.readInfo().then((v) {
         info = v;
+        if (v.split(';').contains('od=1')) _setupOd();
         notifyListeners();
       }).catchError((Object _) {});
       _startTicker();
@@ -69,6 +89,51 @@ class RobotLink extends ChangeNotifier {
       if (was != LinkState.disconnected) error ??= '连接已断开';
     }
     notifyListeners();
+  }
+
+  void _setupOd() {
+    if (od != null || !connected) return;
+    final client = OdClient(transport.writeSdo);
+    od = client;
+    transport.requestMtu(preferredMtu).catchError((Object _) => 23);
+    _sdoSub = transport.sdoStream().listen(client.handleSdo, onError: (Object e) => error = '字典订阅失败：$e');
+    _tpdoSub = transport.tpdoStream().listen(client.handleTpdo, onError: (Object _) {});
+    _healthTimer = Timer.periodic(const Duration(seconds: 1), (_) => _pollHealth(client));
+  }
+
+  Future<void> _pollHealth(OdClient client) async {
+    if (_healthBusy) return;
+    _healthBusy = true;
+    try {
+      final stage = await client.readTyped(0x2001, 1, OdType.u8) as int;
+      final faults = await client.readTyped(0x2001, 2, OdType.u32) as int;
+      final h = RobotHealth(stage, faults);
+      if (h != health || healthReason == null) {
+        final reason = OdType.str.decode(await client.readBytes(0x2001, 3)) as String;
+        if (od != client) return;
+        health = h;
+        healthReason = reason;
+        notifyListeners();
+      }
+    } on OdException catch (e) {
+      // firmware without diagnostics: stop asking
+      if (e.code == 0x06020000 || e.code == 0x06090011) {
+        _healthTimer?.cancel();
+        _healthTimer = null;
+      }
+    } finally {
+      _healthBusy = false;
+    }
+  }
+
+  /// The robot's object dictionary, read once per connection (cached by checksum).
+  Future<OdDictionary> loadDictionary() {
+    final client = od;
+    if (client == null) return Future.error(OdException('这台机器人的固件没有对象字典'));
+    return _dictionaryLoad ??= client.loadDictionary(odCache).catchError((Object e) {
+      _dictionaryLoad = null;
+      throw e;
+    });
   }
 
   void _startTicker() {
@@ -120,6 +185,15 @@ class RobotLink extends ChangeNotifier {
   }
 
   void _stop() {
+    _healthTimer?.cancel();
+    _healthTimer = null;
+    _sdoSub?.cancel();
+    _sdoSub = null;
+    _tpdoSub?.cancel();
+    _tpdoSub = null;
+    od?.close();
+    od = null;
+    _dictionaryLoad = null;
     _statusWasFresh = false;
     _ticker?.cancel();
     _ticker = null;
@@ -137,7 +211,8 @@ class RobotLink extends ChangeNotifier {
       } catch (_) {}
     }
     _stop();
-    await _stateSub?.cancel();
+    // not awaited: cancelling an async* stream waits for its generator, which may be parked
+    unawaited(_stateSub?.cancel());
     _stateSub = null;
     await transport.disconnect();
     if (state != LinkState.disconnected) {

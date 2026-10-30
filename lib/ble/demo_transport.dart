@@ -1,5 +1,8 @@
 import 'dart:async';
 
+import 'package:clock/clock.dart';
+
+import '../od/demo_od.dart';
 import 'protocol.dart';
 import 'robot_transport.dart';
 
@@ -13,24 +16,41 @@ class DemoTransport implements RobotTransport {
   DateTime _lastAt = DateTime.fromMillisecondsSinceEpoch(0);
   bool _estop = false;
   double _w1 = 0, _w2 = 0;
-  final _start = DateTime.now();
+  final _start = clock.now();
+  final _sdo = StreamController<List<int>>.broadcast();
+  final _tpdo = StreamController<List<int>>.broadcast();
+  Timer? _odTimer;
+  late final DemoOdServer od = DemoOdServer(remoteInControl: _remoteInControl);
+
+  bool _remoteInControl() =>
+      clock.now().difference(_lastAt) < const Duration(milliseconds: 300) &&
+      (_last.flags & flagTakeover) != 0 &&
+      _last.state == HostState.idle.value &&
+      !_estop;
 
   @override
   Future<String?> ensureReady() async => null;
 
   @override
-  Stream<FoundRobot> scan() => Stream.value(const FoundRobot('demo', 'HelloBalls-演示', -40));
+  Stream<FoundRobot> scan() => Stream.value(FoundRobot('demo', 'HelloBalls-演示', -40, od.health));
 
   @override
   Stream<LinkState> connect(String id) async* {
     yield LinkState.connecting;
     await Future<void>.delayed(const Duration(milliseconds: 300));
     _timer = Timer.periodic(const Duration(milliseconds: 100), (_) => _tick());
+    _odTimer = Timer.periodic(const Duration(milliseconds: 20), (_) {
+      od.tick(0.02);
+      final now = clock.now().difference(_start).inMilliseconds;
+      for (final f in od.dueTpdos(now)) {
+        _tpdo.add(f);
+      }
+    });
     yield LinkState.connected;
   }
 
   void _tick() {
-    final fresh = DateTime.now().difference(_lastAt) < const Duration(milliseconds: 300);
+    final fresh = clock.now().difference(_lastAt) < const Duration(milliseconds: 300);
     final takeover = fresh && (_last.flags & flagTakeover) != 0 && !_estop;
     final driving = takeover && const [1, 2, 4].contains(_last.state);
     final t1 = driving ? _last.wheel1Rpm.toDouble() : 0.0;
@@ -45,7 +65,7 @@ class DemoTransport implements RobotTransport {
       lastSeq: _last.seq,
       wheel1Rpm: _w1.round(),
       wheel2Rpm: _w2.round(),
-      uptimeMs: DateTime.now().difference(_start).inMilliseconds,
+      uptimeMs: clock.now().difference(_start).inMilliseconds,
     );
     _status.add(st.encode());
   }
@@ -54,6 +74,11 @@ class DemoTransport implements RobotTransport {
   Future<void> disconnect() async {
     _timer?.cancel();
     _timer = null;
+    _odTimer?.cancel();
+    _odTimer = null;
+    od.debugMode = false;
+    od.debugRun = false;
+    od.tpdoEnabled.fillRange(0, 4, false);
   }
 
   @override
@@ -61,7 +86,7 @@ class DemoTransport implements RobotTransport {
     final f = ControlFrame.decode(frame);
     if (f == null) return;
     _last = f;
-    _lastAt = DateTime.now();
+    _lastAt = clock.now();
   }
 
   @override
@@ -75,5 +100,21 @@ class DemoTransport implements RobotTransport {
   Stream<List<int>> statusStream() => _status.stream;
 
   @override
-  Future<String> readInfo() async => 'proto=$protocolVersion;fw=demo';
+  Future<String> readInfo() async => 'proto=$protocolVersion;od=1;fw=demo';
+
+  @override
+  Future<int> requestMtu(int mtu) async => mtu;
+
+  @override
+  Future<void> writeSdo(List<int> frame) async {
+    final rsp = od.handle(frame);
+    // Answer a moment later, as over the air
+    Timer(const Duration(milliseconds: 5), () => _sdo.add(rsp));
+  }
+
+  @override
+  Stream<List<int>> sdoStream() => _sdo.stream;
+
+  @override
+  Stream<List<int>> tpdoStream() => _tpdo.stream;
 }

@@ -59,7 +59,11 @@ class _ScanPageState extends State<ScanPage> {
       return;
     }
     _scan = widget.link.transport.scan().listen(
-      (r) => setState(() => _found[r.id] = r),
+      (r) => setState(() {
+        // the health bytes are in the scan response, which not every report carries
+        final health = r.health ?? _found[r.id]?.health;
+        _found[r.id] = FoundRobot(r.id, r.name, r.rssi, health);
+      }),
       onError: (Object e) => setState(() {
         _message = '扫描失败：$e';
         _scanning = false;
@@ -141,7 +145,15 @@ class _ScanPageState extends State<ScanPage> {
                     ListTile(
                       leading: const Icon(Icons.sports_tennis),
                       title: Text(r.name),
-                      subtitle: Text('${r.id}  信号 ${r.rssi} dBm'),
+                      subtitle: Text.rich(TextSpan(children: [
+                        TextSpan(text: '${r.id}  信号 ${r.rssi} dBm'),
+                        if (r.health != null)
+                          TextSpan(
+                            text: '\n${r.health!.summary}',
+                            style: TextStyle(
+                                color: r.health!.hasProblem ? Theme.of(context).colorScheme.error : const Color(0xFF43A047)),
+                          ),
+                      ])),
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () => _open(r),
                     ),
