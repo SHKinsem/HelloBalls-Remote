@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+
+import '../ble/protocol.dart';
 
 import '../binding/remote_settings.dart';
 
@@ -44,6 +47,8 @@ class SettingsPage extends StatelessWidget {
               value: settings.invertForward,
               onChanged: (v) => _set((s) => s.invertForward = v),
             ),
+            const Divider(height: 32),
+            const _AboutTile(),
           ],
         ),
       ),
@@ -57,5 +62,44 @@ class SettingsPage extends StatelessWidget {
       Text('$title：$readout'),
       Slider(value: value.clamp(min, max), min: min, max: max, divisions: divisions, onChanged: onChanged),
     ]);
+  }
+}
+
+/// App name, version and licenses.
+class _AboutTile extends StatelessWidget {
+  const _AboutTile();
+
+  static const _name = 'HelloBalls 遥控器';
+  static const _stage = '预览版';
+  static final Future<PackageInfo> _info = PackageInfo.fromPlatform();
+
+  @override
+  Widget build(BuildContext context) {
+    final icon = ClipRRect(
+      borderRadius: BorderRadius.circular(10),
+      child: Image.asset('assets/branding/app_icon.png', width: 44, height: 44),
+    );
+    return FutureBuilder<PackageInfo>(
+      future: _info,
+      builder: (context, snap) {
+        final info = snap.data;
+        final version = info == null ? '' : '${info.version} (${info.buildNumber}) ';
+        return ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: icon,
+          title: const Text(_name),
+          subtitle: Text('${version.isEmpty ? '' : '版本 $version· '}$_stage · 蓝牙协议 v$protocolVersion'),
+          trailing: TextButton(
+            child: const Text('开源许可'),
+            onPressed: () => showLicensePage(
+              context: context,
+              applicationName: _name,
+              applicationVersion: '$version$_stage',
+              applicationIcon: Padding(padding: const EdgeInsets.all(8), child: icon),
+            ),
+          ),
+        );
+      },
+    );
   }
 }

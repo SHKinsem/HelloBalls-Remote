@@ -1,0 +1,8 @@
+# Copy to android/key.properties (git-ignored) and fill in.
+# Create a key once with:
+#   keytool -genkey -v -keystore android/helloballs-release.jks -keyalg RSA -keysize 2048 -validity 10000 -alias helloballs
+# Keep the .jks and passwords safe: updates to an installed app must be signed with the same key.
+storeFile=helloballs-release.jks
+storePassword=
+keyAlias=helloballs
+keyPassword=

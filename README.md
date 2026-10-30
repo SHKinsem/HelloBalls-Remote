@@ -32,6 +32,17 @@ flutter run           # 连手机直接运行
 
 iOS 需要在 Mac 上用 Xcode 签名后安装。
 
+## 发布
+
+- **版本号**在 `pubspec.yaml` 的 `version: 0.9.0+1`：`+` 前是显示给用户的版本，`+` 后是构建号（Android versionCode），每次发新包都要加 1。App 里“设置 → 关于”能看到当前版本。变更记录写在 [CHANGELOG.md](CHANGELOG.md)。
+- **签名**：第一次发布前生成一把发布密钥，把 `android/key.properties.example` 复制成 `android/key.properties` 填好（这两个文件和 `.jks` 都不会进 git）。之后 `flutter build apk --release` 就会用发布密钥签名；没有这个文件时退回 debug 签名，只适合自己测试。密钥要备份好，换了密钥的包无法覆盖安装旧版。
+- **图标和启动页**：源文件在 `assets/branding/`（SVG 和 PNG）。改完 PNG 后运行：
+
+  ```bash
+  dart run flutter_launcher_icons
+  dart run flutter_native_splash:create
+  ```
+
 ## 代码结构
 
 ```
@@ -40,7 +51,10 @@ lib/
   binding/    remote_model.dart（控件值 → 指令帧）  drive_mixer.dart（摇杆 → 左右轮）  remote_settings.dart
   controls/   joystick.dart  simple_controls.dart（按键、滑条、开关、状态）
   layout/     control_spec.dart（JSON 布局）
-  pages/      scan_page.dart  remote_page.dart  settings_page.dart
+  pages/      scan_page.dart  remote_page.dart  settings_page.dart（含“关于”）
+assets/
+  layouts/    默认布局 JSON
+  branding/   图标、启动页素材
 ```
 
 ## 协议

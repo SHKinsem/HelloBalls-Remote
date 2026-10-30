@@ -1,0 +1,14 @@
+<svg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'><defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3F7A27"/><stop offset="1" stop-color="#1F4614"/></linearGradient><radialGradient id="shade" cx="0.35" cy="0.3" r="0.8"><stop offset="0.55" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity="0.22"/></radialGradient></defs><g transform='translate(512 512) scale(1.0) translate(-540 -500)'>
+  <!-- signal arcs -->
+  <g fill="none" stroke="#FFFFFF" stroke-linecap="round" stroke-width="34">
+    <path d="M 640 250 A 170 170 0 0 1 790 400" opacity="0.95"/>
+    <path d="M 650 140 A 280 280 0 0 1 900 390" opacity="0.6"/>
+  </g>
+  <!-- ball -->
+  <circle cx="450" cy="590" r="250" fill="#D9F04A"/>
+  <circle cx="450" cy="590" r="250" fill="url(#shade)"/>
+  <g fill="none" stroke="#FFFFFF" stroke-width="26" stroke-linecap="round">
+    <path d="M 238 460 C 340 520 360 660 260 730"/>
+    <path d="M 662 450 C 560 510 540 670 640 730"/>
+  </g>
+</g></svg>

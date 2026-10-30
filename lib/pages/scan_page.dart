@@ -126,7 +126,16 @@ class _ScanPageState extends State<ScanPage> {
           ]),
         Expanded(
           child: robots.isEmpty
-              ? Center(child: Text(_scanning ? '正在寻找附近的机器人…' : '没有找到机器人，确认机器人已上电后点右上角重新扫描'))
+              ? Center(
+                  child: Column(mainAxisSize: MainAxisSize.min, children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: Image.asset('assets/branding/app_icon.png', width: 72, height: 72),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(_scanning ? '正在寻找附近的机器人…' : '没有找到机器人，确认机器人已上电后点右上角重新扫描'),
+                  ]),
+                )
               : ListView(children: [
                   for (final r in robots)
                     ListTile(
