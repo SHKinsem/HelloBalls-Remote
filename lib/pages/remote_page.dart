@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../ble/protocol.dart';
 import '../ble/robot_link.dart';
@@ -29,11 +30,14 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     model.initFromLayout(widget.layout);
+    // Full screen: the system bars would take a fifth of a landscape phone
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     super.dispose();
   }
 
@@ -59,40 +63,103 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
         if (!didPop) _leave();
       },
       child: Scaffold(
-        appBar: AppBar(
-          toolbarHeight: 40,
-          title: Text(link.robotName ?? '机器人', style: const TextStyle(fontSize: 16)),
-          leading: IconButton(icon: const Icon(Icons.link_off), tooltip: '断开', onPressed: _leave),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.tune),
-              tooltip: '设置',
-              onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-                builder: (_) => SettingsPage(settings: model.settings, onChanged: link.restartTicker),
-              )),
-            ),
-          ],
-        ),
         body: SafeArea(
           child: ListenableBuilder(
             listenable: Listenable.merge([link, model]),
-            builder: (context, _) => LayoutBuilder(builder: (context, c) {
-              return Stack(children: [
-                for (final spec in widget.layout.controls)
-                  Positioned(
-                    left: spec.x * c.maxWidth,
-                    top: spec.y * c.maxHeight,
-                    width: spec.w * c.maxWidth,
-                    height: spec.h * c.maxHeight,
-                    child: Padding(padding: const EdgeInsets.all(3), child: _buildControl(spec)),
-                  ),
-              ]);
-            }),
+            builder: (context, _) => Column(children: [
+              _buildHeader(context),
+              Expanded(
+                child: LayoutBuilder(builder: (context, c) {
+                  return Stack(children: [
+                    for (final spec in widget.layout.controls)
+                      Positioned(
+                        left: spec.x * c.maxWidth,
+                        top: spec.y * c.maxHeight,
+                        width: spec.w * c.maxWidth,
+                        height: spec.h * c.maxHeight,
+                        child: Padding(padding: const EdgeInsets.all(3), child: _buildControl(spec)),
+                      ),
+                  ]);
+                }),
+              ),
+            ]),
           ),
         ),
       ),
     );
   }
+
+  /// One slim row: disconnect, robot name, live status, settings and the
+  /// emergency stop, which is always there whatever the layout says.
+  Widget _buildHeader(BuildContext context) {
+    final theme = Theme.of(context);
+    final link = _linkStatus();
+    final st = this.link.status;
+    final dim = theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant);
+    return SizedBox(
+      height: 48,
+      child: Row(children: [
+        IconButton(icon: const Icon(Icons.link_off), tooltip: '断开', onPressed: _leave),
+        Flexible(
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Row(children: [
+              Text(this.link.robotName ?? '机器人', style: theme.textTheme.titleSmall),
+              const SizedBox(width: 16),
+              Icon(Icons.circle, size: 10, color: link.warn ? theme.colorScheme.error : const Color(0xFF43A047)),
+              const SizedBox(width: 6),
+              Text(link.text,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600, color: link.warn ? theme.colorScheme.error : null)),
+              const SizedBox(width: 20),
+              Text('机器人 ', style: dim),
+              Text(_mcuText(st), style: theme.textTheme.bodyMedium),
+              const SizedBox(width: 20),
+              Text('轮速 ', style: dim),
+              Text(_wheelsText(st), style: theme.textTheme.bodyMedium),
+            ]),
+          ),
+        ),
+        const Spacer(),
+        IconButton(
+          icon: const Icon(Icons.tune),
+          tooltip: '设置',
+          onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+            builder: (_) => SettingsPage(settings: model.settings, onChanged: this.link.restartTicker),
+          )),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(4, 4, 8, 4),
+          child: SizedBox(
+            width: 150,
+            child: RemoteButton(label: '急停', danger: true, onPressed: this.link.connected ? this.link.emergencyStop : null),
+          ),
+        ),
+      ]),
+    );
+  }
+
+  ({String text, bool warn}) _linkStatus() {
+    final st = link.status;
+    if (link.state == LinkState.connecting) return (text: '连接中…', warn: false);
+    if (!link.connected) return (text: link.error ?? '未连接', warn: true);
+    if (st == null || !link.statusFresh) return (text: '已连接，无状态回报', warn: true);
+    if (st.estop) return (text: '急停中', warn: true);
+    return (
+      text: switch (st.source) {
+        ActiveSource.ble => '遥控器在控制',
+        ActiveSource.serial => '上位机在控制',
+        ActiveSource.none => model.takeover ? '接管中…' : '无人控制',
+      },
+      warn: false,
+    );
+  }
+
+  String _mcuText(StatusFrame? st) =>
+      st == null ? '-' : '${st.mcuLabel} / ${HostState.fromValue(st.hostState).label}';
+
+  String _wheelsText(StatusFrame? st) => st == null ? '-' : '${st.wheel1Rpm} / ${st.wheel2Rpm} rpm';
 
   Widget _buildControl(ControlSpec spec) {
     final enabled = link.connected;
@@ -155,35 +222,12 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
     final st = link.status;
     switch (spec.binding) {
       case 'link':
-        final String text;
-        var warn = false;
-        if (link.state == LinkState.connecting) {
-          text = '连接中…';
-        } else if (!link.connected) {
-          text = link.error ?? '未连接';
-          warn = true;
-        } else if (st == null || !link.statusFresh) {
-          text = '已连接，无状态回报';
-          warn = true;
-        } else if (st.estop) {
-          text = '急停中';
-          warn = true;
-        } else {
-          final src = switch (st.source) {
-            ActiveSource.ble => '遥控器在控制',
-            ActiveSource.serial => '上位机在控制',
-            ActiveSource.none => model.takeover ? '接管中…' : '无人控制',
-          };
-          text = src;
-        }
-        return StatusTile(label: spec.label, value: text, warn: warn);
+        final l = _linkStatus();
+        return StatusTile(label: spec.label, value: l.text, warn: l.warn);
       case 'mcu':
-        return StatusTile(
-          label: spec.label,
-          value: st == null ? '-' : '${st.mcuLabel} / ${HostState.fromValue(st.hostState).label}',
-        );
+        return StatusTile(label: spec.label, value: _mcuText(st));
       case 'wheels':
-        return StatusTile(label: spec.label, value: st == null ? '-' : '${st.wheel1Rpm} / ${st.wheel2Rpm} rpm');
+        return StatusTile(label: spec.label, value: _wheelsText(st));
       default:
         return StatusTile(label: spec.label, value: '?');
     }

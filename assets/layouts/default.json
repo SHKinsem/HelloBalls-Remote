@@ -1,23 +1,15 @@
 {
   "name": "默认布局",
   "controls": [
-    {"id": "link", "type": "status", "binding": "link", "label": "连接", "x": 0.02, "y": 0.02, "w": 0.30, "h": 0.14},
-    {"id": "mcu", "type": "status", "binding": "mcu", "label": "机器人", "x": 0.34, "y": 0.02, "w": 0.20, "h": 0.14},
-    {"id": "wheels", "type": "status", "binding": "wheels", "label": "实际轮速", "x": 0.56, "y": 0.02, "w": 0.20, "h": 0.14},
-    {"id": "estop", "type": "button", "binding": "action:estop", "label": "急停", "color": "danger", "x": 0.78, "y": 0.02, "w": 0.20, "h": 0.14},
-
-    {"id": "drive", "type": "joystick", "binding": "drive", "label": "驾驶", "x": 0.02, "y": 0.20, "w": 0.36, "h": 0.78},
-
-    {"id": "takeover", "type": "toggle", "binding": "takeover", "label": "接管控制", "x": 0.40, "y": 0.20, "w": 0.24, "h": 0.14},
-    {"id": "clear", "type": "button", "binding": "action:clear_estop", "label": "解除急停（长按）", "confirm": true, "x": 0.40, "y": 0.36, "w": 0.24, "h": 0.12},
-
-    {"id": "mode_drive", "type": "button", "binding": "state:4", "label": "驾驶", "color": "primary", "x": 0.40, "y": 0.52, "w": 0.115, "h": 0.14},
-    {"id": "mode_idle", "type": "button", "binding": "state:0", "label": "待机", "x": 0.525, "y": 0.52, "w": 0.115, "h": 0.14},
-    {"id": "mode_intake", "type": "button", "binding": "state:1", "label": "吸球", "x": 0.40, "y": 0.68, "w": 0.115, "h": 0.14},
-    {"id": "mode_pickup", "type": "button", "binding": "state:2", "label": "收球", "x": 0.525, "y": 0.68, "w": 0.115, "h": 0.14},
-    {"id": "mode_shoot", "type": "button", "binding": "state:3", "label": "发射（长按）", "confirm": true, "x": 0.40, "y": 0.84, "w": 0.24, "h": 0.14},
-
-    {"id": "tilt", "type": "slider", "binding": "tilt", "label": "俯仰角", "min": -5, "max": 35, "step": 1, "initial": 0, "vertical": true, "x": 0.67, "y": 0.20, "w": 0.15, "h": 0.78},
-    {"id": "shoot", "type": "slider", "binding": "shoot", "label": "摩擦轮", "min": 0, "max": 6000, "step": 100, "initial": 0, "vertical": true, "returnToZero": true, "x": 0.84, "y": 0.20, "w": 0.15, "h": 0.78}
+    {"id": "drive", "type": "joystick", "binding": "drive", "label": "驾驶", "x": 0.01, "y": 0.01, "w": 0.36, "h": 0.98},
+    {"id": "takeover", "type": "toggle", "binding": "takeover", "label": "接管控制", "x": 0.39, "y": 0.02, "w": 0.26, "h": 0.16},
+    {"id": "clear", "type": "button", "binding": "action:clear_estop", "label": "解除急停（长按）", "confirm": true, "x": 0.39, "y": 0.2, "w": 0.26, "h": 0.14},
+    {"id": "mode_drive", "type": "button", "binding": "state:4", "label": "驾驶", "color": "primary", "x": 0.39, "y": 0.38, "w": 0.13, "h": 0.18},
+    {"id": "mode_idle", "type": "button", "binding": "state:0", "label": "待机", "x": 0.52, "y": 0.38, "w": 0.13, "h": 0.18},
+    {"id": "mode_intake", "type": "button", "binding": "state:1", "label": "吸球", "x": 0.39, "y": 0.58, "w": 0.13, "h": 0.18},
+    {"id": "mode_pickup", "type": "button", "binding": "state:2", "label": "收球", "x": 0.52, "y": 0.58, "w": 0.13, "h": 0.18},
+    {"id": "mode_shoot", "type": "button", "binding": "state:3", "label": "发射（长按）", "confirm": true, "x": 0.39, "y": 0.8, "w": 0.26, "h": 0.18},
+    {"id": "tilt", "type": "slider", "binding": "tilt", "label": "俯仰角", "min": -5, "max": 35, "step": 1, "initial": 0, "vertical": true, "x": 0.67, "y": 0.01, "w": 0.15, "h": 0.98},
+    {"id": "shoot", "type": "slider", "binding": "shoot", "label": "摩擦轮", "min": 0, "max": 6000, "step": 100, "initial": 0, "vertical": true, "returnToZero": true, "x": 0.84, "y": 0.01, "w": 0.15, "h": 0.98}
   ]
 }
