@@ -32,6 +32,9 @@ class DemoOdServer {
   bool debugRun = false;
   double debugApplied = 0;
   int debugCap = 500;
+  double servoTilt = 0;
+  final servoTrim = [0.0, 0.0];
+  final servoOrigin = [90.0, 94.0];
   final tpdoEnabled = List<bool>.filled(4, false);
   final tpdoPeriod = [100, 20, 20, 100];
   final tpdoMap = List<List<int>>.generate(4, (_) => <int>[]);
@@ -54,7 +57,7 @@ class DemoOdServer {
     _objects.addAll({
       0x1008: '设备名', 0x100A: '固件版本', 0x1010: '保存参数', 0x1011: '恢复默认参数', 0x1021: '字典描述',
       0x1022: '字典校验和', 0x2000: '机器人状态', 0x2001: '诊断', 0x2201: '摩擦轮 1（CAN 1）', 0x2202: '摩擦轮 2（CAN 2）',
-      0x2203: '左轮（CAN 3）', 0x2204: '右轮（CAN 4）', 0x2205: '拨球（CAN 5）', 0x2600: '电机调试',
+      0x2203: '左轮（CAN 3）', 0x2204: '右轮（CAN 4）', 0x2205: '拨球（CAN 5）', 0x2600: '电机调试', 0x2601: '舵机调试', 0x3200: '舵机中位',
       0x3000: '遥控限幅', 0x3103: 'PID 左轮', 0x5000: '急停',
     });
     _add(0x1008, 0, OdType.str, odRead, '设备名', value: 'HelloBalls-演示');
@@ -109,6 +112,8 @@ class DemoOdServer {
       debugMode = v as bool;
       debugRun = false;
       debugTarget = 0;
+      servoTilt = 0;
+      servoTrim[0] = servoTrim[1] = 0;
       return 0;
     });
     _add(0x2600, 2, OdType.u8, odRead | odWrite, '调试电机', lo: 0, hi: 4,
@@ -141,6 +146,22 @@ class DemoOdServer {
     _add(0x2600, 8, OdType.f32, odRead, '电流', flags: flagPdo, unit: 'A',
         get: () => debugMotor == 0 ? 0.0 : motorSpeed[debugMotor - 1].abs() / 1500);
     _add(0x2600, 9, OdType.f32, odRead, '温度', flags: flagPdo, unit: '°C', get: () => debugMotor == 0 ? 0.0 : 31.5);
+    const servoNames = ['联动角度', '舵机 1 单独偏移', '舵机 2 单独偏移'];
+    for (var s = 1; s <= 3; s++) {
+      _add(0x2601, s, OdType.f32, odRead | odWrite, servoNames[s - 1], unit: '°', lo: s == 1 ? -10 : -15, hi: s == 1 ? 40 : 15,
+          get: () => s == 1 ? servoTilt : servoTrim[s - 2], set: (v) {
+        if (!debugMode) return 0x08000022;
+        s == 1 ? servoTilt = (v as num).toDouble() : servoTrim[s - 2] = (v as num).toDouble();
+        return 0;
+      });
+    }
+    for (var s = 1; s <= 2; s++) {
+      _add(0x3200, s, OdType.f32, odRead | odWrite, '舵机 $s 中位', flags: flagStore | flagIdle, unit: '°', lo: 60, hi: 120,
+          get: () => servoOrigin[s - 1], set: (v) {
+        servoOrigin[s - 1] = (v as num).toDouble();
+        return 0;
+      });
+    }
     _add(0x3000, 1, OdType.u16, odRead | odWrite, '遥控轮速上限', flags: flagStore, unit: 'rpm', lo: 0, hi: 9000, value: 3000);
     _add(0x3000, 2, OdType.u16, odRead | odWrite, '遥控摩擦轮上限', flags: flagStore, lo: 0, hi: 9000, value: 6000);
     const pid = ['Kp', 'Ki', 'Kd', 'Kr', 'Km', 'Umax', 'Umin'];

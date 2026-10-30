@@ -77,6 +77,68 @@ void main() {
     await tester.pump(const Duration(seconds: 5));
   });
 
+  testWidgets('servos move together; one alone or a new centre needs the warning first', (tester) async {
+    final (link, transport) = await _connect(tester);
+    final od = transport.od;
+    await tester.pumpWidget(MaterialApp(home: MotorDebugPage(link: link)));
+    await _settle(tester);
+
+    await tester.tap(find.text('舵机'));
+    await _settle(tester, 300);
+    expect(find.text('舵机 1 中位'), findsOneWidget);
+    expect(find.text('90.0°'), findsWidgets);
+
+    await tester.drag(find.byType(Slider), const Offset(200, 0));
+    await _settle(tester, 300);
+    expect(od.servoTilt, greaterThan(0));
+    expect(od.servoTrim, [0.0, 0.0]);
+
+    // a centre change moves one servo only: cancelled warning writes nothing
+    await tester.ensureVisible(find.byTooltip('加 0.5°').first);
+    await tester.pump();
+    await tester.tap(find.byTooltip('加 0.5°').first);
+    await _settle(tester, 300);
+    expect(find.text('单独操作舵机？'), findsOneWidget);
+    await tester.tap(find.text('取消'));
+    await _settle(tester, 300);
+    expect(od.servoOrigin[0], 90.0);
+
+    await tester.ensureVisible(find.byTooltip('加 0.5°').first);
+    await tester.pump();
+    await tester.tap(find.byTooltip('加 0.5°').first);
+    await _settle(tester, 300);
+    await tester.tap(find.text('我知道了，继续'));
+    await _settle(tester, 300);
+    expect(od.servoOrigin[0], 90.5);
+
+    // the warning was accepted, so the single-servo sliders open without asking again
+    await tester.ensureVisible(find.byType(Switch));
+    await tester.pump();
+    await tester.tap(find.byType(Switch));
+    await _settle(tester, 300);
+    expect(find.text('单独操作舵机？'), findsNothing);
+    await tester.scrollUntilVisible(find.byKey(const ValueKey('trim1')), 100, scrollable: find.byType(Scrollable).first);
+    await tester.drag(find.byKey(const ValueKey('trim0')), const Offset(100, 0));
+    await _settle(tester, 300);
+    expect(od.servoTrim[0], greaterThan(0));
+    await tester.ensureVisible(find.byType(Switch));
+    await tester.pump();
+    await tester.tap(find.byType(Switch));
+    await _settle(tester, 300);
+    expect(od.servoTrim, [0.0, 0.0]);
+
+    await tester.ensureVisible(find.text('保存中位到机器人'));
+    await tester.tap(find.text('保存中位到机器人'));
+    await _settle(tester, 300);
+    expect(od.saves, 1);
+
+    await tester.pumpWidget(const SizedBox());
+    await _settle(tester, 500);
+    expect(od.debugMode, isFalse);
+    link.disconnect();
+    await tester.pump(const Duration(seconds: 5));
+  });
+
   testWidgets('dictionary page lists objects and writes a checked value', (tester) async {
     final (link, transport) = await _connect(tester);
     await tester.pumpWidget(MaterialApp(home: DictionaryPage(link: link)));
