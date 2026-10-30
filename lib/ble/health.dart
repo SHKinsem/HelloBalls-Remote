@@ -14,6 +14,7 @@ int faultMotor(int canId) => 1 << (1 + canId);
 const int faultHoming = 1 << 7;
 const int faultSerial = 1 << 8;
 const int faultEstop = 1 << 9;
+const int faultCrash = 1 << 10; // last reset was a crash; details in 0x2001.5, cleared by 0x2001.6
 
 const _motorNames = ['摩擦轮 1', '摩擦轮 2', '左轮', '右轮', '拨球'];
 
@@ -38,6 +39,7 @@ class RobotHealth {
         if (faults & faultHoming != 0) '步进回零超时，限位开关没有触发',
         if (faults & faultSerial != 0) '上位机串口没有数据',
         if (faults & faultEstop != 0) '急停中',
+        if (faults & faultCrash != 0) '上次异常重启（详情见参数页“诊断”）',
       ];
 
   /// One line for the scan list and the header.

@@ -21,6 +21,12 @@ void main() {
     expect(RobotHealth.fromManufacturerData(d.sublist(0, 8)), isNull);
   });
 
+  test('a crash on the last boot is reported', () {
+    final h = RobotHealth(stageReady, faultCrash | faultSerial);
+    expect(h.hasProblem, isTrue);
+    expect(h.summary, contains('上次异常重启'));
+  });
+
   test('no serial host alone is not a problem', () {
     expect(const RobotHealth(stageReady, faultSerial).hasProblem, isFalse);
     expect(const RobotHealth(stageReady, 0).summary, '正常');
