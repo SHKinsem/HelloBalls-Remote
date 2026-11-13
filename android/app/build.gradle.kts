@@ -2,6 +2,8 @@ import java.util.Properties
 
 plugins {
     id("com.android.application")
+    // Shadow must transform Android classes before kotlin-android takes over source sets.
+    id("com.tencent.shadow.plugin")
     id("kotlin-android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
@@ -50,9 +52,25 @@ android {
 
     buildTypes {
         release {
+            // P1 isolates Shadow/Flutter integration from shrinker adaptation.
+            isMinifyEnabled = false
+            isShrinkResources = false
             signingConfig = signingConfigs.getByName(if (hasReleaseKey) "release" else "debug")
         }
     }
+
+    productFlavors {
+        getByName("plugin") {
+            applicationId = "dev.uniapp.frame"
+        }
+    }
+    androidResources {
+        additionalParameters += listOf("--package-id", "0x7E", "--allow-reserved-package-id")
+    }
+}
+
+dependencies {
+    add("pluginCompileOnly", "com.tencent.shadow.core:runtime:local-b2a7a74-SNAPSHOT")
 }
 
 flutter {
