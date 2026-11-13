@@ -1,4 +1,12 @@
 pluginManagement {
+    val uniVersions = java.util.Properties().apply {
+        file("../vendor/uni-frame/integrations/android/toolchain.properties").inputStream().use { load(it) }
+    }
+    plugins {
+        id("com.tencent.shadow.plugin") version uniVersions.getProperty("shadowVersion")
+        id("com.android.application") version uniVersions.getProperty("agpVersion")
+        id("org.jetbrains.kotlin.android") version uniVersions.getProperty("kotlinVersion")
+    }
     val flutterSdkPath =
         run {
             val properties = java.util.Properties()
@@ -20,9 +28,9 @@ pluginManagement {
 
 plugins {
     id("dev.flutter.flutter-plugin-loader") version "1.0.0"
-    id("com.tencent.shadow.plugin") version "local-b2a7a74-SNAPSHOT" apply false
-    id("com.android.application") version "8.11.1" apply false
-    id("org.jetbrains.kotlin.android") version "2.2.20" apply false
+    id("com.tencent.shadow.plugin") apply false
+    id("com.android.application") apply false
+    id("org.jetbrains.kotlin.android") apply false
 }
 
 include(":app")

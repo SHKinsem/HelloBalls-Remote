@@ -59,19 +59,11 @@ android {
         }
     }
 
-    productFlavors {
-        getByName("plugin") {
-            applicationId = "dev.uniapp.frame"
-        }
-    }
-    androidResources {
-        additionalParameters += listOf("--package-id", "0x7E", "--allow-reserved-package-id")
-    }
 }
 
-dependencies {
-    add("pluginCompileOnly", "com.tencent.shadow.core:runtime:local-b2a7a74-SNAPSHOT")
-}
+val uniFrameRoot = rootProject.file("../vendor/uni-frame")
+extra["uniFrameRoot"] = uniFrameRoot.absolutePath
+apply(from = uniFrameRoot.resolve("integrations/android/app.gradle"))
 
 flutter {
     source = "../.."
