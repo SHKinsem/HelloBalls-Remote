@@ -12,7 +12,7 @@
     <uses-feature android:name="android.hardware.bluetooth_le" android:required="true" />
     <application
         android:label="HelloBalls 遥控器"
-        android:name="${applicationName}"
+        android:name="com.shkinsem.helloballs_remote.UniProjectApplication"
         android:icon="@mipmap/ic_launcher">
         <activity
             android:name=".MainActivity"

@@ -1,0 +1,15 @@
+{
+  "formatVersion": 1,
+  "projectId": "helloballs",
+  "name": "HelloBalls",
+  "description": "通过 Uni Frame 下载、更新和测试",
+  "package": "com.shkinsem.helloballs_remote",
+  "entryActivity": "com.shkinsem.helloballs_remote.MainActivity",
+  "minAndroidApi": 24,
+  "abis": [
+    "arm64-v8a",
+    "x86_64"
+  ],
+  "flutterDirectory": ".",
+  "siteUrl": ""
+}

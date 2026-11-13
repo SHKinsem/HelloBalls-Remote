@@ -1,0 +1,3 @@
+[submodule "vendor/uni-frame"]
+	path = vendor/uni-frame
+	url = https://github.com/SHKinsem/Uni-App-Frame.git

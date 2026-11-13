@@ -1,5 +1,5 @@
 package com.shkinsem.helloballs_remote
 
-import io.flutter.embedding.android.FlutterActivity
+import dev.uniapp.frame.adapter.UniFrameActivity
 
-class MainActivity : FlutterActivity()
+class MainActivity : UniFrameActivity()
